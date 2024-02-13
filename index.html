@@ -4,16 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Cube</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/jeromeetienne/ar.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
-    <a-scene embedded arjs>
-        <a-camera-static/>
-        <a-marker-camera preset='hiro'></a-marker-camera>
-        <a-box position="0 0.5 0" material="color: red;" shadow></a-box>
-        <a-light type="ambient" intensity="0.5"></a-light>
-        <a-light type="directional" intensity="0.5" position="2 4 3"></a-light>
-    </a-scene>
+<body onclick="startAR()">
+
+    123
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        function startAR() {
+            navigator.xr.requestSession('immersive-ar', {
+                requiredFeatures: ['local-floor']
+            }).then((session) => {
+                const gl = document.createElement('canvas').getContext('webgl', { xrCompatible: true });
+                session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: gl.canvas });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(renderer.domElement);
+                const geometry = new THREE.BoxGeometry();
+                const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+                camera.position.z = 5;
+                session.requestAnimationFrame(drawFrame);
+                function drawFrame(time, frame) {
+                    const pose = frame.getViewerPose();
+                    if (pose) {
+                        const viewerPosition = pose.transform.position;
+                        const viewerOrientation = pose.transform.orientation;
+                        camera.position.set(viewerPosition.x, viewerPosition.y, viewerPosition.z);
+                        camera.quaternion.set(viewerOrientation.x, viewerOrientation.y, viewerOrientation.z, viewerOrientation.w);
+                        const environment = frame.getEnvironment();
+                        renderer.setEnvironment(environment);
+                        renderer.render(scene, camera);
+                    }
+                    session.requestAnimationFrame(drawFrame);
+                }
+            }).catch(console.error);
+        }
+    </script>
 </body>
 </html>
